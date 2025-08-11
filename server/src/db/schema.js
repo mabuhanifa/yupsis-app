@@ -32,6 +32,7 @@ export const products = pgTable("products", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   vendor: varchar("vendor", { length: 255 }),
+  shopifyProductId: varchar("shopify_product_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -54,6 +55,10 @@ export const variants = pgTable("variants", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   cost: decimal("cost", { precision: 10, scale: 2 }),
   grams: integer("grams"),
+  shopifyVariantId: varchar("shopify_variant_id", { length: 255 }),
+  shopifyInventoryItemId: varchar("shopify_inventory_item_id", {
+    length: 255,
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

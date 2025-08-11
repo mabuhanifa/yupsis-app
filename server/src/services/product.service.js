@@ -83,6 +83,20 @@ const getProductById = async (productId, tx = db) => {
   return product;
 };
 
+const getVariantBySku = async (sku) => {
+  const variant = await db.query.variants.findFirst({
+    where: eq(variants.sku, sku),
+  });
+  return variant;
+};
+
+const updateVariantInventory = async (variantId, quantity) => {
+  return db
+    .update(inventory)
+    .set({ quantity, updatedAt: new Date() })
+    .where(eq(inventory.variantId, variantId));
+};
+
 const updateProduct = async (productId, updateData) => {
   const [updatedProduct] = await db
     .update(products)
@@ -112,6 +126,8 @@ export const productService = {
   createProduct,
   getProducts,
   getProductById,
+  getVariantBySku,
+  updateVariantInventory,
   updateProduct,
   deleteProduct,
 };

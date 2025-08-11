@@ -31,6 +31,15 @@ const fetchProducts = async () => {
   ]);
 };
 
+const fetchInventoryUpdates = async () => {
+  console.log("Fetching inventory updates from SSActiveWear API...");
+  return Promise.resolve([
+    { sku: "G500-WHT-L", quantity: 95 },
+    { sku: "G500-BLK-L", quantity: 40 },
+  ]);
+};
+
 export const ssActivewearService = {
   fetchProducts,
+  fetchInventoryUpdates,
 };
