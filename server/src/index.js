@@ -11,7 +11,16 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 app.use(cors());
-app.use(express.json());
+
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      if (req.originalUrl.startsWith("/api/webhooks")) {
+        req.rawBody = buf.toString();
+      }
+    },
+  })
+);
 app.use(logger);
 
 app.use("/api", apiRouter);

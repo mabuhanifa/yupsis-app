@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   decimal,
   integer,
   pgTable,
@@ -151,3 +152,45 @@ export const productsToChannelsRelations = relations(
     }),
   })
 );
+
+// Orders Table
+export const orders = pgTable("orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shopifyOrderId: bigint("shopify_order_id", { mode: "number" })
+    .notNull()
+    .unique(),
+  email: varchar("email", { length: 255 }),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const ordersRelations = relations(orders, ({ many }) => ({
+  lineItems: many(lineItems),
+}));
+
+// Line Items Table
+export const lineItems = pgTable("line_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  variantId: uuid("variant_id").references(() => variants.id, {
+    onDelete: "set null",
+  }),
+  shopifyProductId: bigint("shopify_product_id", { mode: "number" }),
+  shopifyVariantId: bigint("shopify_variant_id", { mode: "number" }),
+  quantity: integer("quantity").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const lineItemsRelations = relations(lineItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [lineItems.orderId],
+    references: [orders.id],
+  }),
+  variant: one(variants, {
+    fields: [lineItems.variantId],
+    references: [variants.id],
+  }),
+}));
