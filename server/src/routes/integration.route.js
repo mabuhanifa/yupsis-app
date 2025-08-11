@@ -11,5 +11,9 @@ router.get(
   "/ssactivewear/status/:jobId",
   integrationController.getImportStatus
 );
+router.post(
+  "/shopify/products/:productId/deploy",
+  integrationController.deployProductToShopify
+);
 
 export default router;

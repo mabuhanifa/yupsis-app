@@ -1,5 +1,6 @@
 import httpStatusCodes from "http-status-codes";
 import { productImportQueue } from "../queues/productImport.queue.js";
+import { shopifyService } from "../services/shopify.service.js";
 import { catchAsync } from "../utils/catchAsync.js";
 
 const importFromSSActivewear = catchAsync(async (req, res) => {
@@ -32,7 +33,17 @@ const getImportStatus = catchAsync(async (req, res) => {
   });
 });
 
+const deployProductToShopify = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await shopifyService.deployProduct(productId);
+  res.status(httpStatusCodes.CREATED).json({
+    message: "Product successfully deployed to Shopify.",
+    shopifyProduct: result,
+  });
+});
+
 export const integrationController = {
   importFromSSActivewear,
   getImportStatus,
+  deployProductToShopify,
 };

@@ -1,39 +1,65 @@
 import { ssActivewearMapping } from "../config/mapping.config.js";
 
-const getValue = (source, keyOrFn) => {
-  if (typeof keyOrFn === "function") {
-    return keyOrFn(source);
+const applyMapping = (source, mapping) => {
+  const result = {};
+
+  for (const targetKey in mapping) {
+    const rule = mapping[targetKey];
+    let value;
+
+    if (rule.transform) {
+      value = rule.transform(source);
+    } else if (rule.key) {
+      value = source[rule.key];
+    }
+
+    if (value === undefined || value === null) {
+      value = rule.default;
+    }
+
+    if (value !== undefined && value !== null && rule.type) {
+      if (rule.type === "number") value = parseFloat(value);
+      if (rule.type === "integer") value = parseInt(value, 10);
+      if (isNaN(value)) value = rule.default;
+    }
+
+    if (rule.required && (value === undefined || value === null)) {
+      throw new Error(
+        `Required field "${targetKey}" (${rule.key}) is missing or null.`
+      );
+    }
+
+    if (value !== undefined) {
+      result[targetKey] = value;
+    }
   }
-  return source[keyOrFn];
+  return result;
 };
 
 const transformProduct = (apiProduct) => {
-  const mapping = ssActivewearMapping;
-
-  const transformed = {
-    title: getValue(apiProduct, mapping.product.title),
-    description: getValue(apiProduct, mapping.product.description),
-    vendor: getValue(apiProduct, mapping.product.vendor),
-    variants: [],
-  };
+  const transformedProduct = applyMapping(
+    apiProduct,
+    ssActivewearMapping.product
+  );
 
   if (apiProduct.variants && Array.isArray(apiProduct.variants)) {
-    transformed.variants = apiProduct.variants.map((apiVariant) => {
-      const variant = {
-        title: getValue(apiVariant, mapping.variant.title),
-        sku: getValue(apiVariant, mapping.variant.sku),
-        price: getValue(apiVariant, mapping.variant.price),
-        cost: getValue(apiVariant, mapping.variant.cost),
-        grams: getValue(apiVariant, mapping.variant.grams),
-        inventory: {
-          quantity: getValue(apiVariant, mapping.inventory.quantity),
-        },
-      };
-      return variant;
+    transformedProduct.variants = apiProduct.variants.map((apiVariant) => {
+      const transformedVariant = applyMapping(
+        apiVariant,
+        ssActivewearMapping.variant
+      );
+      const transformedInventory = applyMapping(
+        apiVariant,
+        ssActivewearMapping.inventory
+      );
+      transformedVariant.inventory = transformedInventory;
+      return transformedVariant;
     });
+  } else {
+    transformedProduct.variants = [];
   }
 
-  return transformed;
+  return transformedProduct;
 };
 
 export const transformService = {
