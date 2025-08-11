@@ -3,9 +3,9 @@ import {
   bigint,
   decimal,
   integer,
-  jsonb,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   uuid,
@@ -14,7 +14,7 @@ import {
 
 // Channels Table (e.g., Shopify, Amazon)
 export const channels = pgTable("channels", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -30,7 +30,7 @@ export const categories = pgTable("categories", {
 
 // Products Table
 export const products = pgTable("products", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   vendor: varchar("vendor", { length: 255 }),
@@ -156,17 +156,16 @@ export const productsToChannelsRelations = relations(
 
 // Sync History Table
 export const syncHistory = pgTable("sync_history", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  jobId: varchar("job_id", { length: 255 }).notNull(),
-  jobType: varchar("job_type", { length: 255 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull(), // e.g., 'completed', 'failed'
-  details: jsonb("details"), // To store results or error messages
+  id: serial("id").primaryKey(),
+  channel: varchar("channel", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(),
+  details: text("details"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Orders Table
 export const orders = pgTable("orders", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: serial("id").primaryKey(),
   shopifyOrderId: bigint("shopify_order_id", { mode: "number" })
     .notNull()
     .unique(),
@@ -205,3 +204,11 @@ export const lineItemsRelations = relations(lineItems, ({ one }) => ({
     references: [variants.id],
   }),
 }));
+
+// New users table for admin authentication
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
