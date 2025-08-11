@@ -3,6 +3,7 @@ import {
   bigint,
   decimal,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -152,6 +153,16 @@ export const productsToChannelsRelations = relations(
     }),
   })
 );
+
+// Sync History Table
+export const syncHistory = pgTable("sync_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  jobId: varchar("job_id", { length: 255 }).notNull(),
+  jobType: varchar("job_type", { length: 255 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull(), // e.g., 'completed', 'failed'
+  details: jsonb("details"), // To store results or error messages
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // Orders Table
 export const orders = pgTable("orders", {

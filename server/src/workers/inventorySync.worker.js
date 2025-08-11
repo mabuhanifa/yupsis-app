@@ -1,8 +1,8 @@
 import { Worker } from "bullmq";
 import { connection } from "../queues/connection.js";
+import { adminService } from "../services/admin.service.js";
 import { productService } from "../services/product.service.js";
 import { shopifyService } from "../services/shopify.service.js";
-import { ssActivewearService } from "../services/ssactivewear.service.js";
 
 const worker = new Worker(
   "inventory-sync",
@@ -52,10 +52,22 @@ const worker = new Worker(
 
 worker.on("completed", (job, result) => {
   console.log(`Job ${job.id} has completed! Result:`, result);
+  adminService.logSyncEvent({
+    jobId: job.id,
+    jobType: job.name,
+    status: "completed",
+    details: result,
+  });
 });
 
 worker.on("failed", (job, err) => {
   console.log(`Job ${job.id} has failed with ${err.message}`);
+  adminService.logSyncEvent({
+    jobId: job.id,
+    jobType: job.name,
+    status: "failed",
+    details: { message: err.message },
+  });
 });
 
 export default worker;

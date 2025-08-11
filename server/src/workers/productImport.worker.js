@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import { connection } from "../queues/connection.js";
+import { adminService } from "../services/admin.service.js";
 import { productService } from "../services/product.service.js";
 import { ssActivewearService } from "../services/ssactivewear.service.js";
 import { transformService } from "../services/transform.service.js";
@@ -20,18 +21,30 @@ const worker = new Worker(
       return { status: "Completed" };
     } catch (error) {
       console.error(`Job ${job.id} failed:`, error);
-      throw error; // Re-throw to let BullMQ handle the failure
+      throw error;
     }
   },
   { connection }
 );
 
-worker.on("completed", (job) => {
+worker.on("completed", (job, result) => {
   console.log(`Job ${job.id} has completed!`);
+  adminService.logSyncEvent({
+    jobId: job.id,
+    jobType: job.name,
+    status: "completed",
+    details: result,
+  });
 });
 
 worker.on("failed", (job, err) => {
   console.log(`Job ${job.id} has failed with ${err.message}`);
+  adminService.logSyncEvent({
+    jobId: job.id,
+    jobType: job.name,
+    status: "failed",
+    details: { message: err.message },
+  });
 });
 
 export default worker;
