@@ -9,12 +9,14 @@
     "dev": "nodemon src/index.js",
     "worker": "node src/worker.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.js",
+    "db:drop": "tsx src/db/drop-tables.js"
   },
   "dependencies": {
     "@shopify/shopify-api": "^11.14.1",
     "axios": "^1.11.0",
-    "bcryptjs": "^3.0.2",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.56.10",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -32,6 +34,8 @@
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "devDependencies": {
-    "drizzle-kit": "^0.31.4"
+    "@faker-js/faker": "^9.9.0",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.20.3"
   }
 }

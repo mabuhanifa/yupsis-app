@@ -14,7 +14,7 @@ import {
 
 // Channels Table (e.g., Shopify, Amazon)
 export const channels = pgTable("channels", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -30,9 +30,10 @@ export const categories = pgTable("categories", {
 
 // Products Table
 export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  image: text("image"),
   vendor: varchar("vendor", { length: 255 }),
   shopifyProductId: varchar("shopify_product_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -165,7 +166,7 @@ export const syncHistory = pgTable("sync_history", {
 
 // Orders Table
 export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   shopifyOrderId: bigint("shopify_order_id", { mode: "number" })
     .notNull()
     .unique(),
