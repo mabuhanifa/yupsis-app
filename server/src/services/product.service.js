@@ -1,7 +1,13 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 import httpStatusCodes from "http-status-codes";
 import { db } from "../db/index.js";
-import { inventory, products, variants } from "../db/schema.js";
+import {
+  categories,
+  inventory,
+  products,
+  productsToCategories,
+  variants,
+} from "../db/schema.js";
 import { ApiError } from "../utils/ApiError.js";
 
 const createProduct = async (productData) => {
@@ -42,27 +48,63 @@ const createProduct = async (productData) => {
 const getProducts = async (queryParams) => {
   const {
     page = 1,
-    limit = 10,
+    limit = 12,
     sortBy = "createdAt",
     order = "desc",
+    search,
+    category,
   } = queryParams;
   const offset = (page - 1) * limit;
+
+  // Note: Sorting by price is complex and not implemented here.
+  // It would require a subquery on the variants table.
   const orderBy =
     order === "asc" ? asc(products[sortBy]) : desc(products[sortBy]);
 
-  const productList = await db.query.products.findMany({
-    limit,
-    offset,
-    orderBy,
-    with: {
-      variants: {
-        with: {
-          inventory: true,
+  const categorySubquery = category
+    ? db
+        .select({ id: productsToCategories.productId })
+        .from(productsToCategories)
+        .innerJoin(
+          categories,
+          eq(productsToCategories.categoryId, categories.id)
+        )
+        .where(eq(categories.name, category))
+    : undefined;
+
+  const whereConditions = and(
+    search ? like(products.title, `%${search}%`) : undefined,
+    category ? sql`${products.id} in (${categorySubquery})` : undefined
+  );
+
+  const [productList, totalResult] = await Promise.all([
+    db.query.products.findMany({
+      where: whereConditions,
+      limit,
+      offset,
+      orderBy,
+      with: {
+        variants: {
+          columns: {
+            price: true,
+          },
+          limit: 1, // Fetch only one variant to get a price
         },
       },
-    },
-  });
-  return productList;
+    }),
+    db.select({ value: count() }).from(products).where(whereConditions),
+  ]);
+
+  const total = totalResult[0].value;
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: productList,
+    total,
+    page: Number(page),
+    limit: Number(limit),
+    totalPages,
+  };
 };
 
 const getProductById = async (productId, tx = db) => {

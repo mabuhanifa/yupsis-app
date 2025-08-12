@@ -4,7 +4,7 @@ import express from "express";
 import { testDbConnection } from "./db/index.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import logger from "./middleware/logger.js";
-import apiRouter from "./routes/index.js";
+import mainRouter from "./routes/index.js";
 import { NotFoundError } from "./utils/NotFoundError.js";
 
 const app = express();
@@ -23,7 +23,7 @@ app.use(
 );
 app.use(logger);
 
-app.use("/api", apiRouter);
+app.use("/api", mainRouter);
 
 app.use((req, res, next) => {
   next(new NotFoundError(`Route ${req.originalUrl} not found`));

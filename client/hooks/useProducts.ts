@@ -2,21 +2,28 @@ import api from "@/lib/api";
 import { PaginatedResponse, Product } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 
+interface ProductFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  order?: string;
+  category?: string;
+}
+
 const fetchProducts = async (
-  page = 1,
-  limit = 12
+  filters: ProductFilters
 ): Promise<PaginatedResponse<Product>> => {
   const { data } = await api.get("/products", {
-    params: { page, limit },
+    params: filters,
   });
-  console.log("Fetched products:", data);
   return data;
 };
 
-export const useProducts = (page = 1, limit = 12) => {
+export const useProducts = (filters: ProductFilters) => {
   return useQuery({
-    queryKey: ["products", { page, limit }],
-    queryFn: () => fetchProducts(page, limit),
+    queryKey: ["products", filters],
+    queryFn: () => fetchProducts(filters),
     keepPreviousData: true,
   });
 };

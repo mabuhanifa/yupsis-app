@@ -1,3 +1,10 @@
+export interface Inventory {
+  id: string;
+  variantId: string;
+  quantity: number;
+  location?: string;
+}
+
 export interface Variant {
   id: string;
   productId: string;
@@ -6,6 +13,12 @@ export interface Variant {
   price: string;
   cost?: string;
   grams?: number;
+  inventory?: Inventory;
+}
+
+export interface Category {
+  id: string;
+  name: string;
 }
 
 export interface Product {
@@ -15,6 +28,10 @@ export interface Product {
   image?: string;
   vendor?: string;
   variants: Pick<Variant, "price">[];
+}
+
+export interface ProductDetail extends Omit<Product, "variants"> {
+  variants: Variant[];
 }
 
 export interface PaginatedResponse<T> {
