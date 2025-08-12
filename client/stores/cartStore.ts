@@ -1,22 +1,22 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface CartItem {
-  id: string;
-  title: string;
-  price: number;
-  image?: string;
-  quantity: number;
+export interface CartItem {
+  id: string; // Variant ID
+  title: string; // Product title
+  price: number; // Product price
+  image?: string; // Product image URL
+  quantity: number; // Quantity of the product in the cart
 }
 
 interface CartState {
-  items: CartItem[];
-  addItem: (item: CartItem) => void;
-  removeItem: (itemId: string) => void;
-  updateQuantity: (itemId: string, quantity: number) => void;
-  clearCart: () => void;
-  totalItems: () => number;
-  totalPrice: () => number;
+  items: CartItem[]; // Array of items in the cart
+  addItem: (item: CartItem) => void; // Function to add an item to the cart
+  removeItem: (itemId: string) => void; // Function to remove an item from the cart
+  updateQuantity: (itemId: string, quantity: number) => void; // Function to update the quantity of an item in the cart
+  clearCart: () => void; // Function to clear the cart
+  totalItems: () => number; // Function to get the total number of items in the cart
+  totalPrice: () => number; // Function to get the total price of items in the cart
 }
 
 export const useCartStore = create<CartState>()(
