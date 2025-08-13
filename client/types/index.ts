@@ -1,6 +1,3 @@
-import { CheckoutFormValues } from "@/lib/validators";
-import { CartItem } from "@/stores/cartStore";
-
 export interface Inventory {
   id: string;
   variantId: string;
@@ -37,9 +34,12 @@ export interface ProductDetail extends Omit<Product, "variants"> {
   variants: Variant[];
 }
 
-export interface CreateOrderPayload {
-  customerInfo: CheckoutFormValues;
-  items: CartItem[];
+export interface SyncHistory {
+  id: number;
+  channel: string;
+  status: "Success" | "Failed" | "In Progress";
+  details?: string;
+  createdAt: string;
 }
 
 export interface PaginatedResponse<T> {
