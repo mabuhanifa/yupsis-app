@@ -1,3 +1,6 @@
+import { CheckoutFormValues } from "@/lib/validators";
+import { CartItem } from "@/stores/cartStore";
+
 export interface Inventory {
   id: string;
   variantId: string;
@@ -32,6 +35,11 @@ export interface Product {
 
 export interface ProductDetail extends Omit<Product, "variants"> {
   variants: Variant[];
+}
+
+export interface CreateOrderPayload {
+  customerInfo: CheckoutFormValues;
+  items: CartItem[];
 }
 
 export interface PaginatedResponse<T> {

@@ -167,11 +167,17 @@ export const syncHistory = pgTable("sync_history", {
 // Orders Table
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
-  shopifyOrderId: bigint("shopify_order_id", { mode: "number" })
-    .notNull()
-    .unique(),
-  email: varchar("email", { length: 255 }),
+  shopifyOrderId: bigint("shopify_order_id", { mode: "number" }).unique(),
+  email: varchar("email", { length: 255 }).notNull(),
+  customerName: varchar("customer_name", { length: 255 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  shippingAddress1: text("shipping_address_1").notNull(),
+  shippingAddress2: text("shipping_address_2"),
+  shippingCity: varchar("shipping_city", { length: 100 }).notNull(),
+  shippingPostalCode: varchar("shipping_postal_code", {
+    length: 20,
+  }).notNull(),
+  shippingCountry: varchar("shipping_country", { length: 100 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

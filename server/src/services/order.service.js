@@ -1,36 +1,80 @@
 import { eq } from "drizzle-orm";
+import httpStatusCodes from "http-status-codes";
 import { db } from "../db/index.js";
-import { lineItems, orders, variants } from "../db/schema.js";
+import { inventory, lineItems, orders } from "../db/schema.js";
+import { ApiError } from "../utils/ApiError.js";
 
-const createOrderFromWebhook = async (payload) => {
+const createOrder = async (orderData) => {
+  const { email, items } = orderData;
+
+  if (!items || items.length === 0) {
+    throw new ApiError(httpStatusCodes.BAD_REQUEST, "Cart is empty");
+  }
+
   return db.transaction(async (tx) => {
+    // 1. Get all variant details and calculate total price
+    const variantIds = items.map((item) => item.id);
+    const dbVariants = await tx.query.variants.findMany({
+      where: (variants, { inArray }) => inArray(variants.id, variantIds),
+      with: { inventory: true },
+    });
+
+    let totalPrice = 0;
+    const lineItemsToInsert = [];
+
+    for (const item of items) {
+      const dbVariant = dbVariants.find((v) => v.id === item.id);
+      if (!dbVariant) {
+        throw new ApiError(
+          httpStatusCodes.NOT_FOUND,
+          `Variant with ID ${item.id} not found.`
+        );
+      }
+      if (dbVariant.inventory.quantity < item.quantity) {
+        throw new ApiError(
+          httpStatusCodes.BAD_REQUEST,
+          `Not enough stock for ${dbVariant.title}.`
+        );
+      }
+
+      totalPrice += parseFloat(dbVariant.price) * item.quantity;
+      lineItemsToInsert.push({
+        variantId: item.id,
+        quantity: item.quantity,
+        price: dbVariant.price,
+      });
+    }
+
+    // 2. Create the order
     const [newOrder] = await tx
       .insert(orders)
       .values({
-        shopifyOrderId: payload.id,
-        email: payload.email,
-        totalPrice: payload.total_price,
+        email,
+        totalPrice: totalPrice.toFixed(2),
       })
       .returning();
 
-    for (const item of payload.line_items) {
-      const ourVariant = await tx.query.variants.findFirst({
-        where: eq(variants.sku, item.sku),
-      });
+    // 3. Create line items
+    const finalLineItems = lineItemsToInsert.map((li) => ({
+      ...li,
+      orderId: newOrder.id,
+    }));
+    await tx.insert(lineItems).values(finalLineItems);
 
-      await tx.insert(lineItems).values({
-        orderId: newOrder.id,
-        variantId: ourVariant?.id || null,
-        shopifyProductId: item.product_id,
-        shopifyVariantId: item.variant_id,
-        quantity: item.quantity,
-        price: item.price,
-      });
+    // 4. Update inventory for each variant
+    for (const item of items) {
+      const dbVariant = dbVariants.find((v) => v.id === item.id);
+      const newQuantity = dbVariant.inventory.quantity - item.quantity;
+      await tx
+        .update(inventory)
+        .set({ quantity: newQuantity, updatedAt: new Date() })
+        .where(eq(inventory.variantId, item.id));
     }
-    return newOrder;
+
+    return { orderId: newOrder.id, ...newOrder };
   });
 };
 
 export const orderService = {
-  createOrderFromWebhook,
+  createOrder,
 };
