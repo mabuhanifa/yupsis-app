@@ -12,12 +12,10 @@ export const checkoutSchema = z.object({
 });
 
 export type CheckoutFormValues = z.infer<typeof checkoutSchema>;
-  shippingPostalCode: z
-    .string()
-    .min(4, { message: "Postal code must be at least 4 characters." }),
-  shippingCountry: z
-    .string()
-    .min(2, { message: "Country must be at least 2 characters." }),
+
+export const loginSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
-export type CheckoutFormValues = z.infer<typeof checkoutSchema>;
+export type LoginFormValues = z.infer<typeof loginSchema>;

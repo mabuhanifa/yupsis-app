@@ -1,8 +1,10 @@
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
+import httpStatusCodes from "http-status-codes";
 import jwt from "jsonwebtoken";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key";
 const SALT_ROUNDS = 10;
@@ -49,8 +51,25 @@ const getProfile = async (userId) => {
   return user;
 };
 
+const loginUserWithEmailAndPassword = async (email, password) => {
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    throw new ApiError(
+      httpStatusCodes.UNAUTHORIZED,
+      "Incorrect email or password"
+    );
+  }
+
+  delete user.password;
+  return user;
+};
+
 export const authService = {
   register,
   login,
   getProfile,
+  loginUserWithEmailAndPassword,
 };

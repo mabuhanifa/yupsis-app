@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import cors from "cors";
-import "dotenv/config";
 import express from "express";
+import passport from "passport";
+import { jwtStrategy } from "./config/passport.js";
 import { testDbConnection } from "./db/index.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import logger from "./middleware/logger.js";
@@ -22,6 +26,9 @@ app.use(
   })
 );
 app.use(logger);
+
+app.use(passport.initialize());
+passport.use("jwt", jwtStrategy);
 
 app.use("/api", mainRouter);
 
