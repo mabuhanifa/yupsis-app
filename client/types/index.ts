@@ -42,6 +42,19 @@ export interface SyncHistory {
   createdAt: string;
 }
 
+export interface DashboardStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalUsers: number;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;

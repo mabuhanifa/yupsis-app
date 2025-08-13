@@ -47,13 +47,14 @@ const createProduct = async (productData) => {
 
 const getProducts = async (queryParams) => {
   const {
-    page = 1,
-    limit = 12,
     sortBy = "createdAt",
     order = "desc",
     search,
     category,
   } = queryParams;
+
+  const page = parseInt(queryParams.page, 10) || 1;
+  const limit = parseInt(queryParams.limit, 10) || 12;
   const offset = (page - 1) * limit;
 
   // Note: Sorting by price is complex and not implemented here.

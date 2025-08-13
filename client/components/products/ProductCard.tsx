@@ -20,7 +20,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const price = product.variants?.[0]?.price
     ? `$${parseFloat(product.variants[0].price).toFixed(2)}`
     : "N/A";
-
   return (
     <Card className="flex flex-col">
       <CardHeader className="p-0">
