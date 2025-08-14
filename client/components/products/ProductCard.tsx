@@ -57,8 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="relative aspect-square w-full">
           <Image
             src={
-              product.images?.[0]?.src ||
-              "https://images.unsplash.com/photo-1546868871-7041f2a55e12?q=80&w=500"
+              product.image
             }
             alt={product.title}
             fill

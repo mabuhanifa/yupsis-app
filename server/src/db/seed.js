@@ -1,206 +1,182 @@
-import { faker } from "@faker-js/faker";
-import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
-import { db } from "./index.js";
+import "dotenv/config";
+import { drizzle } from "drizzle-orm/node-postgres";
+import fs from "fs/promises";
+import path from "path";
+import { Client } from "pg";
+import { fileURLToPath } from "url";
+
 import * as schema from "./schema.js";
 
-/**
- * To run this seed script:
- * 1. Make sure you have dependencies installed:
- *    npm install -D @faker-js/faker bcrypt tsx
- * 2. Make sure your .env file has the correct DATABASE_URL.
- * 3. Run the script from your project root:
- *    npx tsx ./src/db/seed.js
- */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const main = async () => {
-  console.log("Seeding database...");
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
 
-  // Clean up existing data
-  console.log("Clearing old data...");
-  await db.delete(schema.productsToCategories);
-  await db.delete(schema.productsToChannels);
-  await db.delete(schema.lineItems);
-  await db.delete(schema.inventory);
-  await db.delete(schema.variants);
-  await db.delete(schema.orders);
-  await db.delete(schema.products);
-  await db.delete(schema.categories);
-  await db.delete(schema.channels);
-  await db.delete(schema.users);
-  await db.delete(schema.syncHistory);
+async function main() {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+  });
+  await client.connect();
+  const db = drizzle(client, { schema });
 
-  // --- Create Channels ---
-  console.log("Creating channels...");
-  const createdChannels = await db
-    .insert(schema.channels)
-    .values([{ name: "Shopify" }, { name: "Amazon" }])
-    .returning();
+  try {
+    console.log("Seeding database...");
 
-  // --- Create Categories ---
-  console.log("Creating categories...");
-  const categoriesToInsert = Array.from({ length: 25 }, () => ({
-    name: faker.commerce.department() + " " + faker.string.uuid().slice(0, 4),
-  }));
-  const createdCategories = await db
-    .insert(schema.categories)
-    .values(categoriesToInsert)
-    .returning();
+    // Clean up existing data in the correct order
+    console.log("Clearing existing data...");
+    await db.delete(schema.inventory);
+    await db.delete(schema.productsToChannels);
+    await db.delete(schema.productsToCategories);
+    await db.delete(schema.variants);
+    await db.delete(schema.products);
+    await db.delete(schema.categories);
+    await db.delete(schema.channels);
+    console.log("Data cleared.");
 
-  // --- Create Products ---
-  console.log("Creating products...");
-  const productsToInsert = Array.from({ length: 30 }, () => ({
-    title: faker.commerce.productName(),
-    description: faker.commerce.productDescription(),
-    image: faker.image.url(),
-    vendor: faker.company.name(),
-    shopifyProductId: faker.string.numeric(13),
-  }));
-  const createdProducts = await db
-    .insert(schema.products)
-    .values(productsToInsert)
-    .returning();
+    // Read product data from JSON file
+    const dataPath = path.join(__dirname, "products.json");
+    const productData = JSON.parse(await fs.readFile(dataPath, "utf-8"));
 
-  const productsToCategoriesToInsert = [];
-  const productsToChannelsToInsert = [];
-  const variantsToInsert = [];
+    // 1. Seed Channels
+    console.log("Seeding channels...");
+    const [shopifyChannel] = await db
+      .insert(schema.channels)
+      .values({ name: "Shopify" })
+      .returning();
+    console.log("Channels seeded.");
 
-  for (const product of createdProducts) {
-    // Link product to 1-3 categories
-    faker.helpers
-      .arrayElements(createdCategories, { min: 1, max: 3 })
-      .forEach((category) => {
-        productsToCategoriesToInsert.push({
-          productId: product.id,
-          categoryId: category.id,
+    // 2. Seed Categories
+    console.log("Seeding categories...");
+    const categoryNames = productData.map((c) => ({ name: c.category }));
+    const createdCategories = await db
+      .insert(schema.categories)
+      .values(categoryNames)
+      .returning();
+    const categoryMap = new Map(createdCategories.map((c) => [c.name, c.id]));
+    console.log("Categories seeded.");
+
+    // 3. Prepare and seed Products
+    console.log("Preparing and seeding products...");
+    const productsToInsert = [];
+    for (const categoryData of productData) {
+      for (const productInfo of categoryData.products) {
+        productsToInsert.push({
+          ...productInfo,
+          _temp_category: categoryData.category,
         });
-      });
+      }
+    }
 
-    // Link product to 1-2 channels
-    faker.helpers
-      .arrayElements(createdChannels, { min: 1, max: 2 })
-      .forEach((channel) => {
+    if (productsToInsert.length > 0) {
+      const createdProducts = await db
+        .insert(schema.products)
+        .values(
+          productsToInsert.map((p) => ({
+            title: p.title,
+            description: p.description,
+            image: p.image,
+            vendor: p.vendor,
+          }))
+        )
+        .returning();
+      console.log(`${createdProducts.length} products seeded.`);
+
+      // 4. Prepare data for variants, inventory, and join tables
+      const variantsToInsert = [];
+      const productsToCategoriesToInsert = [];
+      const productsToChannelsToInsert = [];
+
+      for (let i = 0; i < createdProducts.length; i++) {
+        const product = createdProducts[i];
+        const originalProduct = productsToInsert[i];
+        const categoryId = categoryMap.get(originalProduct._temp_category);
+
+        if (categoryId) {
+          productsToCategoriesToInsert.push({
+            productId: product.id,
+            categoryId: categoryId,
+          });
+        }
+
         productsToChannelsToInsert.push({
           productId: product.id,
-          channelId: channel.id,
+          channelId: shopifyChannel.id,
         });
-      });
 
-    // Create 1-3 variants for the product
-    for (let j = 0; j < faker.number.int({ min: 1, max: 3 }); j++) {
-      const price = faker.commerce.price();
-      variantsToInsert.push({
-        productId: product.id,
-        title: faker.commerce.productAdjective(),
-        sku: faker.string.alphanumeric(8).toUpperCase() + j, // ensure uniqueness
-        price: price,
-        cost: (parseFloat(price) * 0.6).toFixed(2),
-        grams: faker.number.int({ min: 100, max: 2000 }),
-        shopifyVariantId: faker.string.numeric(13),
-        shopifyInventoryItemId: faker.string.numeric(13),
-      });
+        for (const variantInfo of originalProduct.variants) {
+          variantsToInsert.push({
+            productId: product.id,
+            ...variantInfo,
+          });
+        }
+      }
+
+      // 5. Seed Variants
+      console.log("Seeding variants...");
+      if (variantsToInsert.length > 0) {
+        const createdVariants = await db
+          .insert(schema.variants)
+          .values(
+            variantsToInsert.map((v) => ({
+              productId: v.productId,
+              title: v.title,
+              sku: v.sku,
+              price: v.price,
+              cost: v.cost,
+              grams: v.grams,
+            }))
+          )
+          .returning();
+        console.log(`${createdVariants.length} variants seeded.`);
+
+        // 6. Prepare and seed Inventory
+        console.log("Seeding inventory...");
+        const variantSkuMap = new Map(
+          createdVariants.map((v) => [v.sku, v.id])
+        );
+        const inventoryToInsert = variantsToInsert
+          .map((v) => {
+            const variantId = variantSkuMap.get(v.sku);
+            if (!variantId) return null;
+            return {
+              variantId: variantId,
+              quantity: v.quantity,
+              location: v.location,
+            };
+          })
+          .filter(Boolean);
+
+        if (inventoryToInsert.length > 0) {
+          await db.insert(schema.inventory).values(inventoryToInsert);
+          console.log(`${inventoryToInsert.length} inventory records seeded.`);
+        }
+      }
+
+      // 7. Seed join tables
+      console.log("Seeding join tables...");
+      if (productsToCategoriesToInsert.length > 0) {
+        await db
+          .insert(schema.productsToCategories)
+          .values(productsToCategoriesToInsert);
+      }
+      if (productsToChannelsToInsert.length > 0) {
+        await db
+          .insert(schema.productsToChannels)
+          .values(productsToChannelsToInsert);
+      }
+      console.log("Join tables seeded.");
     }
+
+    console.log("Database seeded successfully!");
+  } catch (error) {
+    console.error("Error seeding database:", error);
+    process.exit(1);
+  } finally {
+    await client.end();
+    console.log("Database connection closed.");
   }
+}
 
-  console.log("Inserting variants and relations...");
-  const createdVariants = await db
-    .insert(schema.variants)
-    .values(variantsToInsert)
-    .returning();
-
-  const inventoryToInsert = createdVariants.map((variant) => ({
-    variantId: variant.id,
-    quantity: faker.number.int({ min: 0, max: 100 }),
-    location: "Main Warehouse",
-  }));
-
-  if (inventoryToInsert.length > 0) {
-    await db.insert(schema.inventory).values(inventoryToInsert);
-  }
-  if (productsToCategoriesToInsert.length > 0) {
-    await db
-      .insert(schema.productsToCategories)
-      .values(productsToCategoriesToInsert);
-  }
-  if (productsToChannelsToInsert.length > 0) {
-    await db
-      .insert(schema.productsToChannels)
-      .values(productsToChannelsToInsert);
-  }
-
-  // --- Create Admin User ---
-  console.log("Creating admin user...");
-  const hashedPassword = await bcrypt.hash("admin123", 10);
-  await db.insert(schema.users).values({
-    email: "admin@example.com",
-    password: hashedPassword,
-  });
-
-  // --- Create Orders and Line Items ---
-  console.log("Creating orders and line items...");
-  const ordersToInsert = Array.from({ length: 15 }, () => ({
-    shopifyOrderId: faker.string.numeric(13),
-    email: faker.internet.email(),
-    totalPrice: "0", // Placeholder
-  }));
-  const createdOrders = await db
-    .insert(schema.orders)
-    .values(ordersToInsert)
-    .returning();
-
-  const lineItemsToInsert = [];
-  const orderTotals = new Map();
-
-  for (const order of createdOrders) {
-    let orderTotalPrice = 0;
-    const selectedVariants = faker.helpers.arrayElements(createdVariants, {
-      min: 1,
-      max: 4,
-    });
-
-    for (const variant of selectedVariants) {
-      const quantity = faker.number.int({ min: 1, max: 3 });
-      const price = parseFloat(variant.price);
-      orderTotalPrice += price * quantity;
-
-      lineItemsToInsert.push({
-        orderId: order.id,
-        variantId: variant.id,
-        shopifyProductId: faker.string.numeric(13),
-        shopifyVariantId: faker.string.numeric(13),
-        quantity: quantity,
-        price: price.toFixed(2),
-      });
-    }
-    orderTotals.set(order.id, orderTotalPrice.toFixed(2));
-  }
-
-  if (lineItemsToInsert.length > 0) {
-    await db.insert(schema.lineItems).values(lineItemsToInsert);
-  }
-
-  console.log("Updating order totals...");
-  for (const [orderId, totalPrice] of orderTotals.entries()) {
-    await db
-      .update(schema.orders)
-      .set({ totalPrice })
-      .where(eq(schema.orders.id, orderId));
-  }
-
-  // --- Create Sync History ---
-  console.log("Creating sync history...");
-  const syncHistoryToInsert = Array.from({ length: 10 }, () => ({
-    channel: faker.helpers.arrayElement(createdChannels).name,
-    status: faker.helpers.arrayElement(["Success", "Failed", "In Progress"]),
-    details: faker.lorem.sentence(),
-  }));
-  await db.insert(schema.syncHistory).values(syncHistoryToInsert);
-
-  console.log("Database seeded successfully!");
-  process.exit(0);
-};
-
-main().catch((err) => {
-  console.error("Error seeding database:", err);
-  process.exit(1);
-});
+main();

@@ -12,11 +12,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useDeployToShopify } from "@/hooks/useIntegrations";
 import { Product } from "@/types";
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Rocket } from "lucide-react";
+import { MoreHorizontal, Pencil, Rocket } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 function ProductActions({ product }: { product: Product }) {
   const { toast } = useToast();
   const { mutate: deploy, isPending } = useDeployToShopify();
+  const router = useRouter();
 
   const handleDeploy = () => {
     deploy(product.id, {
@@ -37,6 +39,10 @@ function ProductActions({ product }: { product: Product }) {
     });
   };
 
+  const handleEdit = () => {
+    router.push(`/admin/products/${product.id}`);
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -47,6 +53,10 @@ function ProductActions({ product }: { product: Product }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuItem onClick={handleEdit}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleDeploy} disabled={isPending}>
           <Rocket className="mr-2 h-4 w-4" />
           {isPending ? "Deploying..." : "Deploy to Shopify"}

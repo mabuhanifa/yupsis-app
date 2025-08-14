@@ -9,8 +9,8 @@
     "dev": "nodemon src/index.js",
     "worker": "node src/worker.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx src/db/seed.js",
+    "db:migrate": "drizzle-kit push",
+    "db:seed": "node src/db/seed.js",
     "db:drop": "tsx src/db/drop-tables.js"
   },
   "dependencies": {

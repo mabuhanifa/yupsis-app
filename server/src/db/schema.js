@@ -20,6 +20,10 @@ export const channels = pgTable("channels", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const channelsRelations = relations(channels, ({ many }) => ({
+  productsToChannels: many(productsToChannels),
+}));
+
 // Categories Table
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -27,6 +31,10 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  productsToCategories: many(productsToCategories),
+}));
 
 // Products Table
 export const products = pgTable("products", {
@@ -72,7 +80,7 @@ export const variantsRelations = relations(variants, ({ one, many }) => ({
     fields: [variants.productId],
     references: [products.id],
   }),
-  inventory: one(inventory),
+  inventory: many(inventory),
 }));
 
 // Inventory Table
